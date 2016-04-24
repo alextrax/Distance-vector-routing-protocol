@@ -5,8 +5,10 @@ import json
 from datetime import datetime
 
 iface_map = dict() # (IP, port) : interface number
-hops_to_dst = dict() # (IP, port) : hops
+min_hops_to_dst = dict() # (IP, port) : hops
+hops_to_neighbor = dict() # (IP, port) : hops
 to_dst_via_iface = dict() # (dst_ip, dst_port) : interface number
+node2node = dict() # (IP, port): { (dst_ip, dst_port) : hops }
 
 timeout = 5
 buffer_size = 1024
@@ -26,27 +28,28 @@ def parse_neighbors(info):
         iface_map[sockaddr] = i_num
         to_dst_via_iface[sockaddr] = i_num
         i_num += 1
-        hops_to_dst[sockaddr] = int(hops)
+        min_hops_to_dst[sockaddr] = int(hops)
+        hops_to_neighbor[sockaddr] = int(hops)
     print_table()    
 '''
     for i in iface_map:
         print i
         print iface_map[i]
-    for j in hops_to_dst:
+    for j in min_hops_to_dst:
         print j 
-        print hops_to_dst[j]        '''
+        print min_hops_to_dst[j]        '''
 
 def build_stat_json(port, sockaddr):
     json_list = []
     port = {"src_port":port}
     json_list.append(port)
-    for i in hops_to_dst:
+    for i in min_hops_to_dst:
         if i[0] == sockaddr[0] and i[1] == sockaddr[1]: # no need to inform the dst who's dst is itself
             continue
         stat = dict()
         stat["dst_ip"] = i[0]
         stat["dst_port"] = i[1]
-        stat["hops"] = hops_to_dst[i]
+        stat["hops"] = min_hops_to_dst[i]
         json_list.append(stat)
 
     return json.dumps(json_list, indent=4, sort_keys=True)   
@@ -68,7 +71,8 @@ def handle_data(data, ip):
     for i in jlist[1:]:
         dst = (i["dst_ip"], i["dst_port"])
         hops = i["hops"]
-        check_distance(inter, dst, hops)
+        update_hops(inter, dst, hops)
+        find_min_distance(inter, dst, hops)
 
     print_table()
 
@@ -80,24 +84,35 @@ def get_ip_address():
 def print_table():
     print "Node %s:%d @ %s" % (get_ip_address(), port, datetime.now())
     print "host\t\t port\t distance\t interface "
-    for i in hops_to_dst:
-        print "%s\t %d\t %d\t\t %d" % (i[0], i[1], hops_to_dst[i], to_dst_via_iface[i])
+    for i in min_hops_to_dst:
+        print "%s\t %d\t %d\t\t %d" % (i[0], i[1], min_hops_to_dst[i], to_dst_via_iface[i])
 
+def update_hops(src, dst, hops):
+    if src not in node2node:
+        node2node[src] = dict()
 
-def check_distance(inter, dst, hops):
-    #print inter
-    #print dst
-    #print hops
-    local2inter = hops_to_dst[inter]
-    local2dst = hops_to_dst[dst]
-    via= to_dst_via_iface[dst]
-    #print local2inter
-    #print local2dst
-    #print via
+    node2node[src][dst] = hops
+        
 
-    if local2dst > local2inter + hops: # need to update route
-        hops_to_dst[dst] = local2inter + hops
-        to_dst_via_iface[dst] = iface_map[inter]
+def find_min_distance(inter, dst, hops): 
+
+    min_distance = hops_to_neighbor[inter] + hops
+    via = iface_map[inter]
+
+    for d in hops_to_neighbor:
+        if d == dst: # direct link
+            distance = hops_to_neighbor[d]
+        elif d in node2node and dst in node2node[d]: # a -> c = a ->b + b -> c
+            distance = hops_to_neighbor[d] + node2node[d][dst]   
+        else: # not a viable route
+            continue    
+
+        if distance < min_distance:
+            min_distance = distance
+            via = iface_map[d]   
+    
+    min_hops_to_dst[dst] = min_distance
+    to_dst_via_iface[dst] = via
 
         
 
