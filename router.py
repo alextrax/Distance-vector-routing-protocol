@@ -31,13 +31,7 @@ def parse_neighbors(info):
         min_hops_to_dst[sockaddr] = int(hops)
         hops_to_neighbor[sockaddr] = int(hops)
     print_table()    
-'''
-    for i in iface_map:
-        print i
-        print iface_map[i]
-    for j in min_hops_to_dst:
-        print j 
-        print min_hops_to_dst[j]        '''
+
 
 def build_stat_json(port, sockaddr):
     json_list = []
@@ -113,8 +107,6 @@ def find_min_distance(inter, dst, hops):
     
     min_hops_to_dst[dst] = min_distance
     to_dst_via_iface[dst] = via
-
-        
 
 
 # router listen_port interface1 interface2 [...]
