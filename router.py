@@ -13,6 +13,7 @@ node2node = dict() # (IP, port): { (dst_ip, dst_port) : hops }
 timeout = 5
 buffer_size = 1024
 port = 0
+modified = 0
 
 def parse_neighbors(info):
     i_num = 1
@@ -60,6 +61,7 @@ def report_stat(ssock, port):
     t.start()
 
 def handle_data(data, ip):
+    global modified
     jlist = json.loads(data)
     inter = (ip, jlist[0]["src_port"])
     for i in jlist[1:]:
@@ -68,8 +70,10 @@ def handle_data(data, ip):
         update_hops(inter, dst, hops)
         find_min_distance(inter, dst, hops)
 
-    print_table()
-
+    if modified == 1:
+        print_table()
+        modified = 0   
+        
 def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
@@ -92,6 +96,7 @@ def find_min_distance(inter, dst, hops):
 
     min_distance = hops_to_neighbor[inter] + hops
     via = iface_map[inter]
+    global modified
 
     for d in hops_to_neighbor:
         if d == dst: # direct link
@@ -105,6 +110,11 @@ def find_min_distance(inter, dst, hops):
             min_distance = distance
             via = iface_map[d]   
     
+    if dst not in min_hops_to_dst or dst not in to_dst_via_iface:
+        modified = 1
+    else:
+        if min_hops_to_dst[dst] != min_distance or to_dst_via_iface[dst] != via:
+            modified = 1        
     min_hops_to_dst[dst] = min_distance
     to_dst_via_iface[dst] = via
 
