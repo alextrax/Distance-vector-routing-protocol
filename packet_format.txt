@@ -1,0 +1,18 @@
+Packet format:
+  Use json format to pass a list of dictionary
+  Example:
+  [
+    {
+        "src_port": 2001
+    }, 
+    {
+        "dst_ip": "127.0.0.1", 
+        "dst_port": 2003, 
+        "hops": 3
+    }, 
+    {
+        "dst_ip": "127.0.0.1", 
+        "dst_port": 2002, 
+        "hops": 3
+    }
+  ] 

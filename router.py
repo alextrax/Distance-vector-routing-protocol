@@ -82,6 +82,7 @@ def get_ip_address():
 def print_table():
     print "Node %s:%d @ %s" % (get_ip_address(), port, datetime.now())
     print "host\t\t port\t distance\t interface "
+    print "%s\t %d\t %d\t\t %s" % (get_ip_address(), port, 0, "--")
     for i in min_hops_to_dst:
         print "%s\t %d\t %d\t\t %d" % (i[0], i[1], min_hops_to_dst[i], to_dst_via_iface[i])
 
